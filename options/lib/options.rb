@@ -32,8 +32,8 @@ class Options
   # Examples:
   #
   #   Options.parse(ARGV) do
-  #     option 'name=', 'Your username'
-  #     option 'verbose', 'Enable verbose mode'
+  #     value 'name', 'Your username'
+  #     flag  'verbose', 'Enable verbose mode'
   #   end
   #
   # short option is the first letter of long option
@@ -99,8 +99,7 @@ class Options
         raise InvalidOptionError, "invalid #{item} option"
       end
       key = item.sub(/\A--?/, '')
-      key = key.chop if key.end_with?('=')
-      option = options.find { |opt| opt.long == key || opt.short == key }
+      option = options.find { |opt| opt.name == key || opt.short == key }
       if option
         @triggered_options << option
         if option.expects_argument?
@@ -141,13 +140,13 @@ class Options
     end
     helpstr << "Options:\n"
     options.each { |opt|
-      tab = ' ' * ( @longest_flag + 1 - opt.long.size )
+      tab = ' ' * ( @longest_flag + 1 - opt.name.size )
       if opt.expects_argument?
         arg = ' <arg>'
       else
         arg = '      '
       end
-      helpstr << '    -' + opt.short + '|--' + opt.long + arg + tab + ': ' + opt.description + "\n"
+      helpstr << '    -' + opt.short + '|--' + opt.name + arg + tab + ': ' + opt.description + "\n"
     }
     helpstr
   end
@@ -196,28 +195,42 @@ class Options
     @command_call.call if @command_call.respond_to?(:call)
   end
 
-  # Add an Option.
+  # Add a value to options
   #
   # Examples:
-  #   option '--username=', 'Your username'
-  #   option :verbose, 'Enable verbose mode'
+  #   value 'user', 'Your username'
+  #   value :pass,  'Your password'
   #
-  # Returns the created instance of Options::Option.
+  # Returns the created instance of Options::Value.
   #
-  def option(name, desc, &block)
+  def value(name, desc, &block)
     @longest_flag = name.size if name.size > @longest_flag
-    option = Option.new(name, desc, &block)
+    option = Value.new(name, desc, &block)
     @options << option
     option
   end
-  alias on option
+
+  # Add an flag to options
+  #
+  # Examples:
+  #   flag :verbose, 'Enable verbose mode'
+  #   flag 'debug',  'Enable debug mode'
+  #
+  # Returns the created instance of Options::Flag.
+  #
+  def flag(name, desc, &block)
+    @longest_flag = name.size if name.size > @longest_flag
+    option = Flag.new(name, desc, &block)
+    @options << option
+    option
+  end
 
   # Specify code to be executed when these options are parsed.
   #
   # Example:
   #
   #   opts = Options.parse do
-  #     on :v, :verbose
+  #     flag :v, :verbose
   #
   #     run do |opts, args|
   #       puts "Arguments: #{args.inspect}" if opts.verbose?
@@ -235,7 +248,7 @@ class Options
   # Returns the Object value for this option, or nil.
   def [](key)
     key = key.to_s
-    option = options.find { |opt| opt.long == key || opt.short == key }
+    option = options.find { |opt| opt.name == key || opt.short == key }
     option.value if option
   end
 
@@ -248,7 +261,7 @@ class Options
   #
   # include_commands - If true, merge options from all sub-commands.
   def to_hash
-    Hash[options.map { |opt| [opt.long.to_sym, opt.value] }]
+    Hash[options.map { |opt| [opt.name.to_sym, opt.value] }]
   end
   alias to_h to_hash
 
@@ -257,8 +270,8 @@ class Options
   # Examples:
   #
   #   opts = Options.new do
-  #     on :n, :name=
-  #     on :p, :password=
+  #     value :n, :name
+  #     value :p, :password
   #   end
   #
   #   opts.parse %w[ --name Lee ]
@@ -266,7 +279,7 @@ class Options
   #
   # Returns an Array of Strings representing missing options.
   def missing
-    (options - @triggered_options).map(&:long)
+    (options - @triggered_options).map(&:name)
   end
 
   private
@@ -284,9 +297,9 @@ class Options
     meth = method.to_s
     if meth.end_with?('?')
       meth.chop!
-      !(@triggered_options.find { |opt| opt.long == meth }).nil?
+      !(@triggered_options.find { |opt| opt.name == meth }).nil?
     else
-      o = @triggered_options.find { |opt| opt.long == meth }
+      o = @triggered_options.find { |opt| opt.name == meth }
 #      o.nil? ? super : o.value
       if o.nil?
         nil
@@ -315,9 +328,9 @@ class Options
 
   end
 
-  class Option
+  class Flag
 
-    attr_reader :short, :long, :name, :description, :callback
+    attr_reader :short, :name, :description, :callback
     attr_accessor :value
 
     # Incapsulate internal option information, mainly used to store
@@ -330,18 +343,10 @@ class Options
     def initialize(name, description, &block)
       # Remove leading '-' from name if any
       @name = name.to_s.gsub(/^--?/, '')
-      if match = @name.match(/(^.*)=(.*)/)
-        @long, dummy = match.captures
-        @expects_argument = true
-        @value = nil
-      elsif @name.size > 1
-        @long = @name
-        @expects_argument = false
-        @value = false
-      else
-        raise InvalidOptionError, "Option #{@name} is invalid"
-      end
-      @short = @long[0]
+      raise InvalidOptionError, "Option #{@name} is invalid" if @name.size < 2
+      @expects_argument = false
+      @value = false
+      @short = @name[0]
       @description = description
       @callback = (block_given? ? block : nil)
     end
@@ -350,7 +355,36 @@ class Options
     def expects_argument?
       @expects_argument
     end
-    alias expect_argument? expects_argument?
+
+  end
+
+  class Value
+
+    attr_reader :short, :name, :description, :callback
+    attr_accessor :value
+
+    # Incapsulate internal option information, mainly used to store
+    # option specific configuration data, most of the meat of this
+    # class is found in the #value method.
+    #
+    # name        - The String or Symbol option name.
+    # description - The String description text.
+    # block       - An optional block.
+    def initialize(name, description, &block)
+      # Remove leading '-' from name if any
+      @name = name.to_s.gsub(/^--?/, '')
+      raise InvalidOptionError, "Option #{@name} is invalid" if @name.size < 2
+      @expects_argument = true
+      @value = nil
+      @short = @name[0]
+      @description = description
+      @callback = (block_given? ? block : nil)
+    end
+
+    # Returns true if this option expects an argument.
+    def expects_argument?
+      @expects_argument
+    end
 
   end
 
