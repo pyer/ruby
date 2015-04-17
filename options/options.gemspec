@@ -2,7 +2,7 @@
 
 Gem::Specification.new do |s|
   s.name          = 'options'
-  s.version       = '1.0.1'
+  s.version       = '2.0.0'
   s.author        = 'Pierre BAZONNARD'
   s.email         = ['pierre@bazonnard.fr']
   s.homepage      = 'http://tobedefined/'
