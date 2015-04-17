@@ -11,17 +11,12 @@ Usage
 
 Options parses somes words:
 
-run     :  run block is executed during options parsing.
-
-banner  : banner add text to the help message. Help message is displayed with implicit option -h|--help|?|help.
-
-flag    : Linux style boolean option. For example [--verbose] sets verbose flag true. Short option is the first letter of the long option name.
-
-value   : Linux style option. Next argument is the value of the option. For example [--name pyer] means name='pyer'. Short option is the first letter of the long option name, as flag option.
-
-command : Git style sub-commands, For example [programm status --verbose] means programm executes status command in verbose mode.
-
-cmd     : alias of command
+* run     : run block is executed during options parsing.
+* banner  : banner add text to the help message. Help message is displayed with implicit option -h|--help|?|help.
+* flag    : Linux style boolean option. For example [--verbose] sets verbose flag true. Short option is the first letter of the long option name.
+* value   : Linux style option. Next argument is the value of the option. For example [--name pyer] means name='pyer'. Short option is the first letter of the long option name, as flag option.
+* command : Git style sub-commands, For example [programm status --verbose] means programm executes status command in verbose mode.
+* cmd     : alias of command
 
 
 ```ruby
