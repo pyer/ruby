@@ -10,7 +10,7 @@ class TestOptions < Minitest::Test
         run do
           dbg = true
         end
-        option  'verbose', 'Enable verbose mode'
+        flag   'verbose', 'Enable verbose mode'
       end
       assert( opts.verbose )
       assert( dbg )
@@ -22,7 +22,8 @@ class TestOptions < Minitest::Test
         command 'get', 'Get value'
         command 'set', 'Set value'
         command :put,  'Put value'
-        option  'verbose', 'Enable verbose mode'
+        flag    'verbose', 'Enable verbose mode'
+        value   'name', 'Name of the value'
       end
       assert_equal( opts.command, 'get' )
     end
@@ -36,7 +37,7 @@ class TestOptions < Minitest::Test
         command 'set', 'Set value' do
           "SET callback"
         end
-        option  'verbose', 'Enable verbose mode'
+        flag   'verbose', 'Enable verbose mode'
       end
       assert_equal( opts.callback, "GET callback" )
     end
@@ -46,7 +47,7 @@ class TestOptions < Minitest::Test
       assert_raises(Options::InvalidCommandError) {
         opts = Options.parse(args) do
           command '-get', 'Get value'
-          option  'verbose', 'Enable verbose mode'
+          flag    'verbose', 'Enable verbose mode'
         end
       }
     end
@@ -57,7 +58,7 @@ class TestOptions < Minitest::Test
         opts = Options.parse(args) do
           command 'get', 'Get value'
           command 'set', 'Set value'
-          option  'verbose', 'Enable verbose mode'
+          flag    'verbose', 'Enable verbose mode'
         end
       }
     end
@@ -69,7 +70,7 @@ class TestOptions < Minitest::Test
         opts = Options.parse(args) do
           command 'get', 'Get value'
           command 'set', 'Set value'
-          option  'verbose', 'Enable verbose mode'
+          flag    'verbose', 'Enable verbose mode'
         end
       }
     end
@@ -80,7 +81,7 @@ class TestOptions < Minitest::Test
         opts = Options.parse(args) do
           command 'get', 'Get value'
           command 'set', 'Set value'
-          option  'verbose', 'Enable verbose mode'
+          flag    'verbose', 'Enable verbose mode'
         end
       }
     end
@@ -90,8 +91,8 @@ class TestOptions < Minitest::Test
       opts = Options.parse(args) do
         command 'get', 'Get value'
         command 'set', 'Set value'
-        option  'verbose', 'Enable verbose mode'
-        option  'id=', 'Identification'
+        flag    'verbose', 'Enable verbose mode'
+        value   'id', 'Identification'
       end
       assert( opts.verbose? )
     end
@@ -99,7 +100,7 @@ class TestOptions < Minitest::Test
     def test_simple_option1
       args = ['-i']
       opts = Options.parse(args) do
-        on 'id', 'Identification'
+        flag 'id', 'Identification'
       end
       assert( opts.id? )
     end
@@ -107,7 +108,7 @@ class TestOptions < Minitest::Test
     def test_simple_option2
       args = ['--id']
       opts = Options.parse(args) do
-        on 'id', 'Identification'
+        flag 'id', 'Identification'
       end
       assert( opts.id? )
     end
@@ -115,32 +116,59 @@ class TestOptions < Minitest::Test
     def test_simple_option3
       args = ['-i']
       opts = Options.parse(args) do
-        on '--id', 'Identification'
+        flag '--id', 'Identification'
       end
       assert( opts.id? )
     end
 
-    def test_simple_option4
+    def test_simple_value1
       args = ['-i', '123']
       opts = Options.parse(args) do
-        on 'id=ID', 'Identification'
-      end
-      assert_equal( opts[:id], "123" )
-    end
-
-    def test_simple_option4
-      args = ['-i', '123']
-      opts = Options.parse(args) do
-        on 'id=ID', 'Identification'
+        value 'id', 'Identification'
       end
       assert_equal( opts.id, "123" )
+    end
+
+    def test_simple_value2
+      args = ['--id', '123']
+      opts = Options.parse(args) do
+        value 'id', 'Identification'
+      end
+      assert_equal( opts.id, "123" )
+    end
+
+    def test_simple_good_short_option
+      args = ['-i', '123']
+      opts = Options.parse(args) do
+        value 'id=ID', 'Identification'
+      end
+      assert_equal( opts['id=ID'], "123" )
+    end
+
+    def test_simple_bad_long_option
+      args = ['--id', '123']
+      assert_raises(Options::UnknownOptionError) {
+        opts = Options.parse(args) do
+          value 'id=ID', 'Identification'
+        end
+      }
+    end
+
+    def test_simple_bad_value2
+      args = ['--id=123', '-v']
+      assert_raises(Options::UnknownOptionError) {
+        opts = Options.parse(args) do
+          value 'id=ID', 'Identification'
+          flag  'verbose', 'Enable verbose mode'
+        end
+      }
     end
 
     def test_option_with_block
       args = ['-d']
       dbg = false
       opts = Options.parse(args) do
-        option 'debug', 'Enable debug mode' do
+        flag 'debug', 'Enable debug mode' do
           dbg = true
         end
       end
@@ -152,7 +180,7 @@ class TestOptions < Minitest::Test
       args = ['-v']
       opts = Options.parse(args) do
         banner 'Banner'
-        option 'verbose', 'Enable verbose mode'
+        flag   'verbose', 'Enable verbose mode'
       end
       assert_equal( opts.banner, "Banner\n" )
     end
@@ -162,7 +190,7 @@ class TestOptions < Minitest::Test
       opts = Options.parse(args) do
         banner 'Line1'
         banner 'Line2'
-        option 'verbose', 'Enable verbose mode'
+        flag   'verbose', 'Enable verbose mode'
       end
       assert_equal( opts.banner, "Line1\nLine2\n" )
     end
@@ -170,7 +198,7 @@ class TestOptions < Minitest::Test
     def test_help
       args = ['-v']
       opts = Options.parse(args) do
-        on 'verbose', 'Enable verbose mode'
+        flag 'verbose', 'Enable verbose mode'
       end
       assert( opts.help.is_a? String )
       #puts ""
@@ -180,7 +208,7 @@ class TestOptions < Minitest::Test
     def test_true_flag1
       args = ['-v']
       opts = Options.parse(args) do
-        on 'verbose', 'Enable verbose mode'
+        flag 'verbose', 'Enable verbose mode'
       end
       assert( opts.verbose? )
     end
@@ -188,7 +216,7 @@ class TestOptions < Minitest::Test
     def test_true_flag2
       args = ['-v']
       opts = Options.parse(args) do
-        on 'verbose', 'Enable verbose mode'
+        flag 'verbose', 'Enable verbose mode'
       end
       assert( opts[:verbose] )
     end
@@ -196,8 +224,8 @@ class TestOptions < Minitest::Test
     def test_false_flag1
       args = ['-d']
       opts = Options.parse(args) do
-        on 'debug', 'Enable debug mode'
-        on 'verbose', 'Enable verbose mode'
+        flag 'debug', 'Enable debug mode'
+        flag 'verbose', 'Enable verbose mode'
       end
       refute( opts.verbose? )
     end
@@ -205,8 +233,8 @@ class TestOptions < Minitest::Test
     def test_false_flag2
       args = ['-d']
       opts = Options.parse(args) do
-        on 'debug', 'Enable debug mode'
-        on 'verbose', 'Enable verbose mode'
+        flag 'debug', 'Enable debug mode'
+        flag 'verbose', 'Enable verbose mode'
       end
       refute( opts[:verbose] )
     end
@@ -214,7 +242,7 @@ class TestOptions < Minitest::Test
     def test_unknown_flag1
       args = ['-v']
       opts = Options.parse(args) do
-        on 'verbose', 'Enable verbose mode'
+        flag 'verbose', 'Enable verbose mode'
       end
       refute( opts.dummy? )
     end
@@ -222,7 +250,7 @@ class TestOptions < Minitest::Test
     def test_unknown_flag2
       args = ['-v']
       opts = Options.parse(args) do
-        on 'verbose', 'Enable verbose mode'
+        flag 'verbose', 'Enable verbose mode'
       end
       assert( opts[:dummy].nil? )
     end
@@ -232,7 +260,7 @@ class TestOptions < Minitest::Test
       args = ['-v']
       assert_raises(ArgumentError) {
         opts = Options.parse(args) do
-          on 'verbose'
+          flag 'verbose'
         end
       }
     end
@@ -241,7 +269,7 @@ class TestOptions < Minitest::Test
       args = ['-v']
       assert_raises(ArgumentError) {
         opts = Options.parse(args) do
-          on 'verbose', 'Enable verbose mode', 'extra'
+          flag 'verbose', 'Enable verbose mode', 'extra'
         end
       }
     end
@@ -250,8 +278,8 @@ class TestOptions < Minitest::Test
       args = ['--option','-v']
       assert_raises(Options::UnknownOptionError) {
         opts = Options.parse(args) do
-          on 'help', 'Show some help'
-          on 'verbose', 'Enable verbose mode'
+          flag 'help', 'Show some help'
+          flag 'verbose', 'Enable verbose mode'
         end
       }
     end
@@ -259,8 +287,8 @@ class TestOptions < Minitest::Test
     def test_missing_option
       args = ['--name','Pierre']
       opts = Options.parse(args) do
-        on 'name=', 'Enter your name'
-        on 'id=', 'Enter your ID'
+        value 'name', 'Enter your name'
+        value 'id', 'Enter your ID'
       end
       refute( opts.id? )
     end
@@ -268,8 +296,8 @@ class TestOptions < Minitest::Test
     def test_missing_option_is_nil
       args = ['--name','Pierre']
       opts = Options.parse(args) do
-        on 'name=', 'Enter your name'
-        on 'id=', 'Enter your ID'
+        value 'name', 'Enter your name'
+        value 'id', 'Enter your ID'
       end
       assert_nil( opts[:id] )
     end
@@ -277,7 +305,7 @@ class TestOptions < Minitest::Test
     def test_valid_argument
       args = ['--name','Pierre']
       opts = Options.parse(args) do
-        on 'name=', 'Enter your name'
+        value 'name', 'Enter your name'
       end
       assert_equal( opts[:name], "Pierre" )
     end
@@ -285,8 +313,8 @@ class TestOptions < Minitest::Test
     def test_undefined_argument
       args = ['-v']
       opts = Options.parse(args) do
-        on 'name=', 'Enter your name'
-        on 'verbose', 'Enable verbose mode'
+        value 'name', 'Enter your name'
+        flag 'verbose', 'Enable verbose mode'
       end
       refute( opts.name? )
     end
@@ -295,7 +323,7 @@ class TestOptions < Minitest::Test
       args = ['--name']
       assert_raises(Options::MissingArgumentError) {
         opts = Options.parse(args) do
-          on 'name=', 'Enter your name'
+          value 'name', 'Enter your name'
         end
       }
     end
@@ -304,18 +332,18 @@ class TestOptions < Minitest::Test
       args = ['--name', '-v']
       assert_raises(Options::InvalidArgumentError) {
         opts = Options.parse(args) do
-          on 'name=', 'Enter your name'
-          on 'verbose', 'Enable verbose mode'
+          value 'name', 'Enter your name'
+          flag 'verbose', 'Enable verbose mode'
         end
       }
     end
 
     def test_mix_option
-      args = ['-verbose'] # is allowed
+      args = ['-verbose'] # is not allowed
       assert_raises(Options::InvalidOptionError) {
         opts = Options.parse(args) do
-          on 'help', 'Show some help'
-          on 'verbose', 'Enable verbose mode'
+          flag 'help', 'Show some help'
+          flag 'verbose', 'Enable verbose mode'
         end
       }
     end
@@ -323,8 +351,8 @@ class TestOptions < Minitest::Test
     def test_short_option
       args = ['-v']
       opts = Options.parse(args) do
-        on 'help', 'Show some help'
-        on 'verbose', 'Enable verbose mode'
+        flag 'help', 'Show some help'
+        flag 'verbose', 'Enable verbose mode'
       end
       assert( opts.verbose? )
     end
@@ -332,8 +360,8 @@ class TestOptions < Minitest::Test
     def test_long_option
       args = ['--verbose']
       opts = Options.parse(args) do
-        on 'help', 'Show some help'
-        on 'verbose', 'Enable verbose mode'
+        flag 'help', 'Show some help'
+        flag 'verbose', 'Enable verbose mode'
       end
       assert( opts.verbose? )
     end
@@ -341,10 +369,10 @@ class TestOptions < Minitest::Test
     def test_missing_short_option
       args = ['-v']
       opts = Options.parse(args) do
-        on 'dummy', 'Dummy option'
-        on 'help', 'Show some help'
-        on 'verbose', 'Enable verbose mode'
-        on 'zzz', 'Z as Zero'
+        flag 'dummy', 'Dummy option'
+        flag 'help', 'Show some help'
+        flag 'verbose', 'Enable verbose mode'
+        flag 'zzz', 'Z as Zero'
       end
 #      p opts.missing
       assert( opts.missing == ['dummy', 'help', 'zzz'] )
@@ -353,10 +381,10 @@ class TestOptions < Minitest::Test
     def test_missing_long_option
       args = ['--verbose']
       opts = Options.parse(args) do
-        on 'dummy', 'Dummy option'
-        on 'help', 'Show some help'
-        on 'verbose', 'Enable verbose mode'
-        on 'zzz', 'Z as Zero'
+        flag 'dummy', 'Dummy option'
+        flag 'help', 'Show some help'
+        flag 'verbose', 'Enable verbose mode'
+        flag 'zzz', 'Z as Zero'
       end
 #      p opts.missing
       assert( opts.missing == ['dummy', 'help', 'zzz'] )
