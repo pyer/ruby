@@ -1,0 +1,27 @@
+# Options Rakefile
+
+require "rubygems"
+require 'rake'
+$LOAD_PATH << 'lib'
+
+spec = Gem::Specification::load("options.gemspec")
+
+files = Rake::FileList["test/test_*.rb"]
+task :test do
+  files.each do |file|
+    ruby "#{file}"
+  end
+end
+
+desc 'default is build'
+task :default => [:build]
+
+desc 'build gem'
+task :build do
+  system "gem build #{spec.name}.gemspec"
+end
+ 
+desc 'install gem'
+task :install => :build do
+  system "sudo gem install ./#{spec.name}-#{spec.version}.gem"
+end
