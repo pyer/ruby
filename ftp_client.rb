@@ -1,11 +1,13 @@
-
+#!/usr/bin/ruby
+# encoding: UTF-8
+#
 require 'net/ftp'
 
+# Set these 3 variables
 ftp_url  = '???'
 ftp_user = '?'
 ftp_pass = '?'
 
-# Set these 3 variables
 puts "User     = #{ftp_user}"
 puts "Password = #{ftp_pass}"
 puts "URL      = #{ftp_url}"
