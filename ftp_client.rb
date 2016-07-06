@@ -3,13 +3,9 @@
 #
 require 'net/ftp'
 
-# argument is user@url:password for tutorial
-v2 = ARGV[0].split(':')
-v1 = v2[0].split('@')
-# Set these 3 variables
-ftp_user = v1[0]
-ftp_url  = v1[1]
-ftp_pass = v2[1]
+# arguments are 'user@url password' for this tutorial
+ftp_user, ftp_url = ARGV[0].split('@')
+ftp_pass = ARGV[1]
 
 puts "User     = #{ftp_user}"
 puts "URL      = #{ftp_url}"
